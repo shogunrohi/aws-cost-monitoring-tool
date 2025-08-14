@@ -4,7 +4,6 @@ from datetime import datetime, timezone, timedelta
 import csv
 import io
 import pandas as pd
-import os
 
 athena = boto3.client("athena")
 cloudwatch = boto3.client("cloudwatch")
@@ -50,39 +49,58 @@ def zip_results(lst):
         tmp.clear()
     return tmp2
 
-def create_alarm(m_d,alarm_name,description="",namespace="Cost Metrics"):
-    alarm_response = cloudwatch.put_metric_alarm(
-        AlarmName=alarm_name,
-        EvaluationPeriods=1,
-        DatapointsToAlarm=1,
-        ComparisonOperator="LessThanLowerOrGreaterThanUpperThreshold",
-        ThresholdMetricId='ad1',
-        TreatMissingData="missing",
-        Metrics=[
-            {
-                'Id':'m1',
-                'MetricStat':{
-                    "Metric":{
-                        'Namespace':namespace,
-                        'MetricName':m_d["MetricName"],
-                        'Dimensions':m_d["Dimensions"]
+def create_alarm(m_d,alarm_name,description="",namespace="Cost Metrics",anom='n',threshold=0):
+    if anom == 'y':
+        alarm_response = cloudwatch.put_metric_alarm(
+            AlarmName=alarm_name,
+            EvaluationPeriods=1,
+            DatapointsToAlarm=1,
+            ComparisonOperator="LessThanLowerOrGreaterThanUpperThreshold",
+            ThresholdMetricId='ad1',
+            TreatMissingData="missing",
+            Metrics=[
+                {
+                    'Id':'m1',
+                    'MetricStat':{
+                        "Metric":{
+                            'Namespace':namespace,
+                            'MetricName':m_d["MetricName"],
+                            'Dimensions':m_d["Dimensions"]
+                        },
+                        'Period':3600,
+                        'Stat':'Average'
                     },
-                    'Period':3600,
-                    'Stat':'Average'
                 },
-            },
-            {
-                'Id':'ad1',
-                'Expression':'ANOMALY_DETECTION_BAND(m1,2)',
-                'Label':f"{m_d["MetricName"]} (expected)",
-                'ReturnData': True
-            }
-        ],
-        AlarmDescription= "Alarm created to check if the total daily (unblended) cost exceeds or falls below the set threshold.",
-        ActionsEnabled=True
-    )
+                {
+                    'Id':'ad1',
+                    'Expression':'ANOMALY_DETECTION_BAND(m1,2)',
+                    'Label':f"{m_d["MetricName"]} (expected)",
+                    'ReturnData': True
+                }
+            ],
+            AlarmDescription=description,
+            ActionsEnabled=True
+        )
+    else:
+        alarm_response = cloudwatch.put_metric_alarm(
+            AlarmName=alarm_name,
+            EvaluationPeriods=1,
+            DatapointsToAlarm=1,
+            ComparisonOperator="GreaterThanThreshold",
+            Threshold=threshold,
+            TreatMissingData="missing",
+            Namespace=namespace,
+            MetricName=m_d["MetricName"],
+            Dimensions=[
+                m_d["Dimensions"][0]
+            ],
+            Period=3600,
+            Statistic='Average',
+            AlarmDescription=description,
+            ActionsEnabled=True
+        )
 
-def push_metric(value,metric_name,dimension_name=None,dimension_value=None,anomaly_detection='n',alarm='n',desc="",a_n="",current_time=datetime.now().isoformat()):
+def push_metric(value,metric_name,dimension_name=None,dimension_value=None,anomaly_detection='n',alarm='n',desc="",a_n="",current_time=datetime.now().isoformat(),thresh=0):
     metric_data_dict = {
         'MetricName': metric_name,
         'Value': float(value),
@@ -110,12 +128,12 @@ def push_metric(value,metric_name,dimension_name=None,dimension_value=None,anoma
             Stat="Average"
         )
     if alarm == 'y':
-        create_alarm(metric_data_dict,a_n,description=desc)
+        create_alarm(metric_data_dict,a_n,description=desc,anom=anomaly_detection,threshold=thresh)
 
 
 def lambda_handler(event, context):
-    database = os.environ["GLUE_DATABASE"]
-    s3_output = f's3://{os.environ["ATHENA_SAVED_QUERIES_BUCKET"]}/'
+    database = "hourly-cur-database"
+    s3_output = "s3://dashbaord-athena-query-results/"
     catalog_name = 'AwsDataCatalog'
 
     table_name = athena.list_table_metadata(CatalogName=catalog_name, DatabaseName=database)['TableMetadataList'][0]['Name']
@@ -160,7 +178,7 @@ def lambda_handler(event, context):
         desc="Alarm created to check if the total daily (unblended) cost exceeds or falls below the set threshold.",
         a_n="check-daily-cost-alarm"
     )
-    '''
+
     total_account_cost = zip_results(query_results(queries["overall_account_cost_query"],database,s3_output)["ResultSet"]["Rows"])
     
     tac_response = push_metric(
@@ -168,8 +186,12 @@ def lambda_handler(event, context):
         "total_account_cost",
         dimension_name="Total USD Spent Since Account Creation",
         dimension_value="all_account_cost",
+        alarm='y',
+        desc="Alarm created to check overall cost spent on an account goes over a set limit.",
+        a_n="check-overall-cost-alarm",
+        thresh=20
     )
-    '''
+    
     highest_daily_service_cost = zip_results(query_results(queries["highest_daily_service_cost_query"],database,s3_output)["ResultSet"]["Rows"])
     highest_cost_service, service_specfic_cost = highest_daily_service_cost[0][0],highest_daily_service_cost[0][1]
 
