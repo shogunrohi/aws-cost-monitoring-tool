@@ -1,0 +1,225 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Retrieves and Outputs Cost data from Cost and Usage Reports to
+  CloudWatch Dashboards
+Resources:
+  AwsDailyCURBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub aws-daily-cur-reports-${AWS::AccountId}-${AWS::Region}
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  AthenaSavedQueriesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub athena-query-results-${AWS::AccountId}-${AWS::Region}
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  CostGlueDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      DatabaseInput:
+        Name: daily-cur-database
+      CatalogId: !Ref AWS::AccountId
+  DailyCURGlueCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      Name: daily-cur-crawler
+      Role: !Ref DailyCURGlueCrawlerRole
+      DatabaseName: !Ref CostGlueDatabase
+      Targets:
+        S3Targets:
+          - Path: !Sub s3://${AwsDailyCURBucket}/
+  DailyCURGlueCrawlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - glue.amazonaws.com
+            Action:
+              - sts:AssumeRole
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSGlueServiceRole
+      Path: /
+      Policies:
+        - PolicyName: DailyCUR-GlueCrawlerRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::${AwsDailyCURBucket}*
+                Condition:
+                  StringEquals:
+                    aws:ResourceAccount: !Sub ${AWS::AccountId}
+  MetricDataLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonAthenaFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+  LambdaFunctionMetricDataCreation:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: metric-data-creation
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.13
+      MemorySize: 128
+      Timeout: 600
+      Role: !GetAtt MetricDataLambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          ATHENA_SAVED_QUERIES_BUCKET: !Ref AthenaSavedQueriesBucket
+          GLUE_DATABASE: !Ref CostGlueDatabase
+      Code:
+        S3Bucket: !Sub lambda-code-${AWS::AccountId}-${AWS::Region}
+        S3Key: metric-data-creation.zip
+      EphemeralStorage:
+        Size: 512
+      Architectures:
+        - x86_64
+      LoggingConfig:
+        LogFormat: Text
+        LogGroup: /aws/lambda/metric-data-creation
+  MetricDataCreationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${LambdaFunctionMetricDataCreation}
+  EventBridgeSchedulerCURRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Condition:
+              StringEquals:
+                aws:SourceAccount: !Sub ${AWS::AccountId}
+            Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowLambdaInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !GetAtt LambdaFunctionMetricDataCreation.Arn
+  PutMetricDataSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: put-metric-schedule
+      StartDate: '2025-08-14T17:00:00.000Z'
+      FlexibleTimeWindow:
+        Mode: FLEXIBLE
+        MaximumWindowInMinutes: 15
+      ScheduleExpression: rate(1 hours)
+      ScheduleExpressionTimezone: America/New_York
+      Target:
+        Arn: !GetAtt LambdaFunctionMetricDataCreation.Arn
+        RetryPolicy:
+          MaximumEventAgeInSeconds: 86400
+          MaximumRetryAttempts: 0
+        RoleArn: !GetAtt EventBridgeSchedulerCURRole.Arn
+      State: DISABLED
+  AutomatedDashboardCreationExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+  LambdaFunctionAutomatedDashboardCreation:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: automated-dashboard-creation
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.13
+      MemorySize: 160
+      Timeout: 600
+      Role: !GetAtt AutomatedDashboardCreationExecutionRole.Arn
+      Code:
+        S3Bucket: !Sub lambda-code-${AWS::AccountId}-${AWS::Region}
+        S3Key: automated-dashboard-creation.zip
+      EphemeralStorage:
+        Size: 512
+      Architectures:
+        - x86_64
+      LoggingConfig:
+        LogFormat: Text
+        LogGroup: /aws/lambda/automated-dashboard-creation
+  AutomatedDashboardCreationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${LambdaFunctionAutomatedDashboardCreation}
+  AutomatedDashboardCreationLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref LambdaFunctionAutomatedDashboardCreation
+      Principal: logs.amazonaws.com
+      SourceArn: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${MetricDataCreationLogGroup}:*
+  MetricDataSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn: AutomatedDashboardCreationLambdaInvokePermission
+    Properties:
+      LogGroupName: !Ref MetricDataCreationLogGroup
+      FilterPattern: ''
+      DestinationArn: !GetAtt LambdaFunctionAutomatedDashboardCreation.Arn
+  CloudWatchLogsSubscriptionFilterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: logs.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CloudWatchLogsSubscriptionFilterPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt LambdaFunctionAutomatedDashboardCreation.Arn
