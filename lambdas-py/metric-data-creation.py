@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 import csv
 import io
 import pandas as pd
+import os
 
 athena = boto3.client("athena")
 cloudwatch = boto3.client("cloudwatch")
@@ -113,8 +114,8 @@ def push_metric(value,metric_name,dimension_name=None,dimension_value=None,anoma
 
 
 def lambda_handler(event, context):
-    database = "hourly-cur-database"
-    s3_output = "s3://dashbaord-athena-query-results/"
+    database = os.environ["GLUE_DATABASE"]
+    s3_output = os.environ["ATHENA_SAVED_QUERIES_BUCKET"]
     catalog_name = 'AwsDataCatalog'
 
     table_name = athena.list_table_metadata(CatalogName=catalog_name, DatabaseName=database)['TableMetadataList'][0]['Name']
