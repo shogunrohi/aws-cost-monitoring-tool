@@ -2,7 +2,7 @@
 Tool that augments services in the AWS environment to report and detect data regarding cost and usage in AWS in the form of dashboards and alerts.
 
 ## Architecture Overview
-![Image of Solution Architecture](./architecture.jpeg)
+![Image of Solution Architecture](./imgs/architecture.jpeg)
 
 ## Build
 ### 1. Create S3 Bucket to house Lambda code
@@ -19,5 +19,7 @@ Second, deploy the `cef_tool_infrastucture3.yaml` template file through another 
 - EventBridge Scheduler is Disabled.
 
 ### 3. Setting up CUR Reports forwarding to S3
-In AWS, go to Billing and Cost Management --> Data Exports --> Create
+In AWS, go to Billing and Cost Management --> Data Exports --> Create:
+
+![Image of Data Exports Screen](./imgs/data_exports.png)
 
