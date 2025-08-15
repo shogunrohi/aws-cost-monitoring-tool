@@ -24,10 +24,12 @@ In AWS, go to Billing and Cost Management --> Data Exports --> Create:
 ![Image of Data Exports Screen](./imgs/data_exports.png)
 
 #### Once `Create` is pressed, adhere to these settings for the report:
+- Export name --> Name of your choice
 - Data table content settings --> CUR 2.0
 - (ignore additional export content unless wanted)
 - Time granularity --> Daily
 - Compression type and file format --> Parquet - Parquet
 - File versioning --> Overwrite existing data export file
-- S3 Bucket --> Select existing bucket --> Select the bucket under the naming convention `aws-daily-cur-reports-${AWS::AccountId}-${AWS::Region}`
+- S3 Bucket --> Select existing bucket --> Select the bucket `aws-daily-cur-reports-${AWS::AccountId}-${AWS::Region}` (follows YAML)
+- S3 path prefix --> Create a location within the S3 bucket to store the export
 
