@@ -50,7 +50,7 @@ b. Then, press Next (2x) → Crawler schedule (change from On demand to Custom) 
 ![Image of cron expression being set for Glue crawler](./imgs/crawler_cron.png)
 
 ### 5. Modifying EventBridge Scheduler
-Go to EventBridge → Schedules → Select `put-metric-schedule` → Edit → Timeframe (at the bottom). Put in a start time & date that will represent when it is going to initiate in the future for your environment.
+Go to EventBridge → Schedules → Select `put-metric-schedule` → Edit → Timeframe (at the bottom of the page). Put in a start time & date that will represent when it is going to initiate in the future for your environment.
 
 ![Image of schedule in EventBridge](./imgs/scheduler_timeframe.png)
 
