@@ -19,36 +19,39 @@ Second, deploy the `cef_tool_infrastucture3.yaml` template file through another 
 - EventBridge Scheduler is Disabled.
 
 ### 3. Setting up CUR Reports forwarding to S3
-In AWS, go to Billing and Cost Management --> Data Exports --> Create:
+In AWS, go to Billing and Cost Management → Data Exports → Create:
 
 ![Image of Data Exports Screen](./imgs/data_exports.png)
 
 #### Once `Create` is pressed, adhere to these settings for the report:
-- Export name --> Name of your choice
-- Data table content settings --> CUR 2.0
+- Export name → Name of your choice
+- Data table content settings → CUR 2.0
 - (ignore additional export content unless wanted)
-- Time granularity --> Daily
-- Compression type and file format --> Parquet - Parquet
-- File versioning --> Overwrite existing data export file
-- S3 Bucket --> Select existing bucket --> Select the bucket `aws-daily-cur-reports-${AWS::AccountId}-${AWS::Region}` (follows YAML)
-- S3 path prefix --> Create a location within the S3 bucket to store the export
+- Time granularity → Daily
+- Compression type and file format → Parquet - Parquet
+- File versioning → Overwrite existing data export file
+- S3 Bucket → Select existing bucket → Select the bucket `aws-daily-cur-reports-${AWS::AccountId}-${AWS::Region}` (follows YAML)
+- S3 path prefix → Create a location within the S3 bucket to store the export
 
 **After export creation, it may take up to 12-24 hours for the export to populate in the bucket.** But once it appears in the bucket, it will follow a similar structure of `{bucket}/{path-prefix}/{export-name}/data/BILLING_PERIOD={year}-{month}/`.
 
 ### 4. Modifying Glue Grawler
-Head to AWS Glue --> Crawlers (under Data Catalog) --> Select the `daily-cur-crawler`
+Head to AWS Glue → Crawlers (under Data Catalog) → Select the `daily-cur-crawler`
 
 ![Image of Glue crawler interface](./imgs/crawler_interface.png)
 
 #### Now two things need to be changed:
-Select edit (top right) --> Select edit on step 2 --> Select the existing S3 data source --> Edit --> Change the S3 path to `s3://{existing-bucket}/{path-prefix}/{export-name}/data/`.
+a. Select edit (top right) → Select edit on step 2 → Select the existing S3 data source → Edit → Change the S3 path to `s3://{existing-bucket}/{path-prefix}/{export-name}/data/`.
 
-(img here)
+![Image of S3 data source for Glue crawler](./imgs/crawler_data_source.png)
 
-Then, press Next (2x) --> Crawler schedule (change from On demand to Custom) --> Set cron expression to `cron(0 0/2 * * ? *)`.
+b. Then, press Next (2x) → Crawler schedule (change from On demand to Custom) → Set cron expression to `cron(0 0/2 * * ? *)`.
 
-![Image of cronexpression being set for Glue crawler](./imgs/crawler_cron.png)
+![Image of cron expression being set for Glue crawler](./imgs/crawler_cron.png)
 
 ### 5. Modifying EventBridge Scheduler
-Go to EventBridge --> Schedules --> Select `put-metric-schedule` --> Edit.
+Go to EventBridge → Schedules → Select `put-metric-schedule` → Edit → Timeframe (at the bottom). Put in a time & date that will represent when it is going to start in the future for your environment.
+
+![Image of a schedule in EventBridge](./imgs/scheduler_timeframe.png)
+
 
