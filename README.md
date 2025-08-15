@@ -50,4 +50,5 @@ Then, press Next (2x) --> Crawler schedule (change from On demand to Custom) -->
 (img here)
 
 ### 5. Modifying EventBridge Scheduler
+Go to EventBridge --> Schedules --> Select `put-metric-schedule` --> Edit.
 
