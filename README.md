@@ -1,4 +1,6 @@
 # aws-cost-monitoring-tool
-Tool that augments services in the AWS environment to report and detect data regarding cost and usage in AWS.
+Tool that augments services in the AWS environment to report and detect data regarding cost and usage in AWS in the form of dashboards and alerts.
 
-## Solution Overview
+## Architecture Overview
+
+
