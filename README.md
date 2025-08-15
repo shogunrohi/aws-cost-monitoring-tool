@@ -33,3 +33,21 @@ In AWS, go to Billing and Cost Management --> Data Exports --> Create:
 - S3 Bucket --> Select existing bucket --> Select the bucket `aws-daily-cur-reports-${AWS::AccountId}-${AWS::Region}` (follows YAML)
 - S3 path prefix --> Create a location within the S3 bucket to store the export
 
+**After export creation, it may take up to 12-24 hours for the export to populate in the bucket.** But once it appears in the bucket, it will follow a similar structure of `{bucket}/{path-prefix}/{export-name}/data/BILLING_PERIOD={year}-{month}/`.
+
+### 4. Modifying Glue Grawler
+Head to AWS Glue --> Crawlers (under Data Catalog) --> Select the `daily-cur-crawler`
+
+(img here)
+
+#### Now two things need to be changed:
+Select edit (top right) --> Select edit on step 2 --> Select the existing S3 data source --> Edit --> Change the S3 path to `s3://{existing-bucket}/{path-prefix}/{export-name}/data/`.
+
+(img here)
+
+Then, press Next (2x) --> Crawler schedule (change from On demand to Custom) --> Set cron expression to `cron(0 0/2 * * ? *)`.
+
+(img here)
+
+### 5. Modifying EventBridge Scheduler
+
