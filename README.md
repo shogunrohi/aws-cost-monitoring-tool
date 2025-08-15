@@ -15,7 +15,7 @@ As cost data from the CUR report is being pushed to Cloudwatch, Cloudwatch will 
 - Percentage of how much has been spent per used region
 - Overall cost inccured since first billing period on AWS account
 
-**For the last bullet above, it is unlikely it will tally up the previous billing periods since the CUR report can only keep track of the billing period it was created on and for future billing periods to come.**
+**(For the last bullet above, it is unlikely it will tally up the previous billing periods since the CUR report can only keep track of the billing period it was created on and for future billing periods to come.)**
 
 Current month dashboard example:
 
