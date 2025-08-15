@@ -17,7 +17,13 @@ As cost data from the CUR report is being pushed to Cloudwatch, Cloudwatch will 
 
 **For the last bullet above, it is unlikely it will tally up the previous billing periods since the CUR report can only keep track of the billing period it was created on and for future billing periods to come.**
 
-(working on img)
+Current month dashboard example:
+
+![Image of Current month dashboard](./imgs/current_month_dashboard.png)
+
+Previous month dashboard example:
+
+![Image of Current month dashboard](./imgs/previous_month_dashboard.png)
 
 ## Build
 ### 1. Create S3 Bucket to house Lambda code
