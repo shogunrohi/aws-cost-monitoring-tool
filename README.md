@@ -10,5 +10,5 @@ First, create a Cloudformation Stack (new resources option) and upload the `lamb
 Once the Cloudformation Stack is created, compress each of `.py` files in `lambdas-py` folder to a `.zip` format with their respective names (`metric-data-creation.zip` & `automated-dashboard-creation`) and upload it to the bucket that was created by the Stack.
 
 ### Build remaining Architecture
-(will work on)
+(will finish rest of README.md)
 
