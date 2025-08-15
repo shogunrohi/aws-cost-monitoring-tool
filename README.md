@@ -4,6 +4,21 @@ Tool that augments services in the AWS environment to report and detect data reg
 ## Architecture Overview
 ![Image of Solution Architecture](./imgs/architecture.jpeg)
 
+## Usage
+As cost data from the CUR report is being pushed to Cloudwatch, Cloudwatch will create dashboards for both the current and previous month (if data is present already), as well as specfic Cloudwatch alarms for certain metrics. 
+
+#### Some of the viewable metrics include:
+- Total daily cost
+- Highest service cost
+- Top 6 services being used on the AWS account
+- Number of services used on AWS account
+- Percentage of how much has been spent per used region
+- Overall cost inccured since first billing period on AWS account
+
+**For the last bullet above, it is unlikely it will tally up the previous billing periods since the CUR report can only keep track of the billing period it was created on and for future billing periods to come.**
+
+(working on img)
+
 ## Build
 ### 1. Create S3 Bucket to house Lambda code
 First, create a Cloudformation Stack (new resources option) and upload the `lambda_code_bucket.yaml` template file. 
@@ -40,7 +55,7 @@ Head to AWS Glue → Crawlers (under Data Catalog) → Select the `daily-cur-cra
 
 ![Image of Glue crawler interface](./imgs/crawler_interface.png)
 
-#### Now two things need to be changed:
+#### Two items need to be changed:
 a. Select edit (top right) → Select edit on step 2 → Select the existing S3 data source → Edit → Change the S3 path to `s3://{existing-bucket}/{path-prefix}/{export-name}/data/`.
 
 ![Image of S3 data source for Glue crawler](./imgs/crawler_data_source.png)
@@ -50,9 +65,7 @@ b. Then, press Next (2x) → Crawler schedule (change from On demand to Custom) 
 ![Image of cron expression being set for Glue crawler](./imgs/crawler_cron.png)
 
 ### 5. Modifying EventBridge Scheduler
-Go to EventBridge → Schedules → Select `put-metric-schedule` → Edit → Timeframe (at the bottom of the page). Put in a start time & date that will represent when it is going to initiate in the future for your environment.
+Go to EventBridge → Schedules → Select `put-metric-schedule` → Edit → Timeframe (at the bottom of the page). Put in a start time & date that will represent when it is going to run in the future for your environment.
 
 ![Image of schedule in EventBridge](./imgs/scheduler_timeframe.png)
-
-
 
