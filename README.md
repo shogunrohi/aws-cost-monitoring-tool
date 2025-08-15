@@ -52,6 +52,6 @@ b. Then, press Next (2x) → Crawler schedule (change from On demand to Custom) 
 ### 5. Modifying EventBridge Scheduler
 Go to EventBridge → Schedules → Select `put-metric-schedule` → Edit → Timeframe (at the bottom). Put in a time & date that will represent when it is going to start in the future for your environment.
 
-![Image of a schedule in EventBridge](./imgs/scheduler_timeframe.png)
+
 
 
