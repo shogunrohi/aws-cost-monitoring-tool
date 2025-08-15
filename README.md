@@ -38,7 +38,7 @@ In AWS, go to Billing and Cost Management --> Data Exports --> Create:
 ### 4. Modifying Glue Grawler
 Head to AWS Glue --> Crawlers (under Data Catalog) --> Select the `daily-cur-crawler`
 
-(img here)
+![Image of Glue crawler interface](./imgs/crawler_interface.png)
 
 #### Now two things need to be changed:
 Select edit (top right) --> Select edit on step 2 --> Select the existing S3 data source --> Edit --> Change the S3 path to `s3://{existing-bucket}/{path-prefix}/{export-name}/data/`.
@@ -47,7 +47,7 @@ Select edit (top right) --> Select edit on step 2 --> Select the existing S3 dat
 
 Then, press Next (2x) --> Crawler schedule (change from On demand to Custom) --> Set cron expression to `cron(0 0/2 * * ? *)`.
 
-(img here)
+![Image of cronexpression being set for Glue crawler](./imgs/crawler_cron.png)
 
 ### 5. Modifying EventBridge Scheduler
 Go to EventBridge --> Schedules --> Select `put-metric-schedule` --> Edit.
